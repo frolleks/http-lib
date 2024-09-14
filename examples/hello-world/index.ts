@@ -50,8 +50,7 @@ app.post("/upload", (req, res) => {
     fs.writeFileSync(`./uploads/${file.filename}`, file.data);
     res.json({ message: "File uploaded successfully" });
   } else {
-    res.statusCode = 400;
-    res.json({ error: "No file uploaded" });
+    res.status(400).json({ error: "No file uploaded" });
   }
 });
 

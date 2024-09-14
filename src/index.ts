@@ -19,6 +19,7 @@ interface UploadedFile {
 }
 
 export interface PathlessResponse extends http.ServerResponse {
+  status: (statusCode: number) => PathlessResponse;
   send: (body: any) => void;
   text: (body: string) => void;
   html: (body: string) => void;
@@ -303,12 +304,34 @@ function matchPath(
  */
 function enhanceResponse(res: PathlessResponse): void {
   /**
+   * Sets an HTTP status code for the response.
+   * @param statusCode The status code.
+   */
+  res.status = function (statusCode: number) {
+    res.statusCode = statusCode;
+    return res; // Return `res` to allow method chaining
+  };
+
+  /**
    * Sends a response to the client.
    * @param body The response body.
    */
   res.send = function (body: any): void {
+    // Check if the Content-Type header is already set
+    if (!res.hasHeader("Content-Type")) {
+      // Set default Content-Type based on the body type
+      if (typeof body === "string" || Buffer.isBuffer(body)) {
+        throw new Error(
+          "Content-Type header is required when sending string or buffer data."
+        );
+      } else if (typeof body === "object") {
+        throw new Error(
+          "Content-Type header is required when sending JSON data."
+        );
+      }
+    }
+
     if (typeof body === "string" || Buffer.isBuffer(body)) {
-      res.setHeader("Content-Type", "text/html");
       res.end(body);
     } else if (typeof body === "object") {
       res.json(body);
