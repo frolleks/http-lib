@@ -1,0 +1,38 @@
+name: Release Action
+
+on:
+  push:
+    branches:
+      - main
+      - "release/*"
+      - "**"
+
+jobs:
+  check_release_commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Transpile code
+        run: pnpm build
+
+      - name: Check if commit starts with "release:"
+        if: startsWith(github.event.head_commit.message, 'release:')
+        run: |
+          echo "Release commit detected: ${{ github.event.head_commit.message }}"
+
+      - name: Publish to npm
+        if: startsWith(github.event.head_commit.message, 'release:')
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # Use the NPM token from repository secrets
