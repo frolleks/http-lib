@@ -1,6 +1,6 @@
 {
   "name": "pathless",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "an http router for Node.js",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -17,6 +17,11 @@
     "LICENSE",
     "README.md"
   ],
+  "homepage": "https://github.com/frolleks/pathless",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frolleks/pathless.git"
+  },
   "author": "Frolleks",
   "license": "MIT",
   "devDependencies": {
