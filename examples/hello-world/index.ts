@@ -57,6 +57,12 @@ app.post("/upload", (req, res) => {
   }
 });
 
+app.get("/query", (req, res) => {
+  const param = req.query;
+
+  res.send(param);
+});
+
 app.listen(3000, () => {
   console.log("Server is listening on port 3000");
 });
