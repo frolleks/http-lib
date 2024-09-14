@@ -4,7 +4,7 @@ import * as qs from "querystring";
 import * as fs from "fs";
 import * as path from "path";
 
-interface RequestExtensions {
+interface PathlessRequest extends http.IncomingMessage {
   query?: { [key: string]: any };
   pathname?: string;
   params?: { [key: string]: string };
@@ -18,7 +18,7 @@ interface UploadedFile {
   data: Buffer;
 }
 
-interface ResponseExtensions {
+interface PathlessResponse extends http.ServerResponse {
   send: (body: any) => void;
   text: (body: string) => void;
   html: (body: string) => void;
@@ -27,15 +27,12 @@ interface ResponseExtensions {
 }
 
 type MiddlewareFunction = (
-  req: http.IncomingMessage & RequestExtensions,
-  res: http.ServerResponse & ResponseExtensions,
+  req: PathlessRequest,
+  res: PathlessResponse,
   next: (err?: any) => void
 ) => void;
 
-type RouteHandler = (
-  req: http.IncomingMessage & RequestExtensions,
-  res: http.ServerResponse & ResponseExtensions
-) => void;
+type RouteHandler = (req: PathlessRequest, res: PathlessResponse) => void;
 
 interface Route {
   method: string;
@@ -78,8 +75,8 @@ function createApp(): App {
 
   const app = function (req: http.IncomingMessage, res: http.ServerResponse) {
     // Enhance the req and res objects
-    const reqExt = req as http.IncomingMessage & RequestExtensions;
-    const resExt = res as http.ServerResponse & ResponseExtensions;
+    const reqExt = req as PathlessRequest;
+    const resExt = res as PathlessResponse;
     enhanceResponse(resExt);
 
     const method = req.method || "GET";
@@ -253,34 +250,48 @@ function matchPath(
   routePath: string,
   reqPath: string
 ): { [key: string]: string } | null {
-  // Normalize paths by removing trailing slashes (except for root '/')
-  const normalizePath = (path: string) =>
-    path !== "/" ? path.replace(/\/+$/, "") : path;
-  const normalizedRoutePath = normalizePath(routePath);
-  const normalizedReqPath = normalizePath(reqPath);
-
-  const routeSegments = normalizedRoutePath.split("/").filter(Boolean);
-  const reqSegments = normalizedReqPath.split("/").filter(Boolean);
-
-  if (routeSegments.length !== reqSegments.length) {
-    return null;
-  }
-
   const params: { [key: string]: string } = {};
 
-  for (let i = 0; i < routeSegments.length; i++) {
-    const routeSegment = routeSegments[i];
-    const reqSegment = reqSegments[i];
+  let routeIndex = 0;
+  let reqIndex = 0;
 
-    if (routeSegment.startsWith(":")) {
-      if (!reqSegment) {
-        return null; // Parameter value is missing
-      }
-      const paramName = routeSegment.slice(1);
-      params[paramName] = reqSegment;
+  while (routeIndex < routePath.length && reqIndex < reqPath.length) {
+    // Skip over any leading '/' characters
+    while (routePath[routeIndex] === "/") routeIndex++;
+    while (reqPath[reqIndex] === "/") reqIndex++;
+
+    // If we have reached the end of either path, break
+    if (routeIndex >= routePath.length || reqIndex >= reqPath.length) break;
+
+    // Find the next '/' in both paths
+    const nextRouteSlash = routePath.indexOf("/", routeIndex);
+    const nextReqSlash = reqPath.indexOf("/", reqIndex);
+
+    const routeSegment = routePath.slice(
+      routeIndex,
+      nextRouteSlash === -1 ? undefined : nextRouteSlash
+    );
+    const reqSegment = reqPath.slice(
+      reqIndex,
+      nextReqSlash === -1 ? undefined : nextReqSlash
+    );
+
+    // If the segment starts with ':', it's a parameter
+    if (routeSegment[0] === ":") {
+      const paramName = routeSegment.slice(1); // Remove the leading ':'
+      params[paramName] = reqSegment; // Assign the corresponding request segment to the parameter name
     } else if (routeSegment !== reqSegment) {
-      return null;
+      return null; // If a non-parameter segment doesn't match, paths don't match
     }
+
+    // Move to the next segment
+    routeIndex = nextRouteSlash === -1 ? routePath.length : nextRouteSlash;
+    reqIndex = nextReqSlash === -1 ? reqPath.length : nextReqSlash;
+  }
+
+  // Handle case where one path is longer than the other
+  if (routeIndex < routePath.length || reqIndex < reqPath.length) {
+    return null;
   }
 
   return params;
@@ -290,7 +301,7 @@ function matchPath(
  * Enhances the response object with helper methods.
  * @param res The HTTP ServerResponse object.
  */
-function enhanceResponse(res: http.ServerResponse & ResponseExtensions): void {
+function enhanceResponse(res: PathlessResponse): void {
   /**
    * Sends a response to the client.
    * @param body The response body.
@@ -385,7 +396,7 @@ function getMimeType(ext: string): string {
  * @param next The next middleware function.
  */
 function bodyParser(
-  req: http.IncomingMessage & RequestExtensions,
+  req: PathlessRequest,
   res: http.ServerResponse,
   next: (err?: any) => void
 ): void {
