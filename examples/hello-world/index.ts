@@ -57,8 +57,7 @@ app.post("/upload", (req, res) => {
 
 app.get("/query", (req, res) => {
   const param = req.query;
-
-  res.send(param);
+  res.json(param);
 });
 
 app.listen(3000, () => {

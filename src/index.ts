@@ -20,6 +20,8 @@ interface UploadedFile {
 
 interface ResponseExtensions {
   send: (body: any) => void;
+  text: (body: string) => void;
+  html: (body: string) => void;
   json: (data: any) => void;
   sendFile: (filePath: string) => void;
 }
@@ -302,6 +304,24 @@ function enhanceResponse(res: http.ServerResponse & ResponseExtensions): void {
     } else {
       res.end();
     }
+  };
+
+  /**
+   * Sends an HTML response to the client.
+   * @param body The response body.
+   */
+  res.html = function (body: string): void {
+    res.setHeader("Content-Type", "text/html");
+    res.end(body);
+  };
+
+  /**
+   * Sends a plain text response to the client.
+   * @param body The response body.
+   */
+  res.text = function (body: string): void {
+    res.setHeader("Content-Type", "text/plain");
+    res.end(body);
   };
 
   /**
