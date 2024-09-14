@@ -1,0 +1,11 @@
+{
+  "name": "hello-world",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "tsx": "^4.19.1"
+  }
+}
