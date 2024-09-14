@@ -1,5 +1,6 @@
 import * as fs from "fs";
-import createApp from "http-lib";
+import { createApp } from "http-lib";
+import userRoutes from "./userRoutes";
 
 const app = createApp();
 
@@ -8,6 +9,8 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
+
+app.use("/users", userRoutes);
 
 // Route sending plain text
 app.get("/", (req, res) => {
@@ -28,11 +31,6 @@ app.get("/image", (req, res) => {
 // Route serving a video
 app.get("/video", (req, res) => {
   res.sendFile("./public/video.mp4");
-});
-
-// Route with parameters
-app.get("/users/:id", (req, res) => {
-  res.json({ userId: req.params?.id });
 });
 
 // Route handling JSON body

@@ -42,13 +42,26 @@ interface Route {
 
 interface App {
   (req: http.IncomingMessage, res: http.ServerResponse): void;
-  use: (middleware: MiddlewareFunction) => void;
+  use(middleware: MiddlewareFunction): void;
+  use(path: string, routerOrMiddleware: Router | MiddlewareFunction): void;
   listen: (port: number, callback?: () => void) => http.Server;
   get: (path: string, handler: RouteHandler) => void;
   post: (path: string, handler: RouteHandler) => void;
   put: (path: string, handler: RouteHandler) => void;
   delete: (path: string, handler: RouteHandler) => void;
   patch: (path: string, handler: RouteHandler) => void;
+}
+
+interface Router {
+  use(middleware: MiddlewareFunction): void;
+  use(path: string, middleware: MiddlewareFunction): void;
+  get: (path: string, handler: RouteHandler) => void;
+  post: (path: string, handler: RouteHandler) => void;
+  put: (path: string, handler: RouteHandler) => void;
+  delete: (path: string, handler: RouteHandler) => void;
+  patch: (path: string, handler: RouteHandler) => void;
+  routes: Route[];
+  middlewares: MiddlewareFunction[];
 }
 
 /**
@@ -107,8 +120,56 @@ function createApp(): App {
     next();
   } as App;
 
-  app.use = function (middleware: MiddlewareFunction): void {
-    middlewares.push(middleware);
+  app.use = function (
+    pathOrMiddleware: string | MiddlewareFunction,
+    routerOrMiddleware?: Router | MiddlewareFunction
+  ): void {
+    if (typeof pathOrMiddleware === "string" && routerOrMiddleware) {
+      const path = pathOrMiddleware;
+      const handler = routerOrMiddleware;
+
+      if ("routes" in handler && "middlewares" in handler) {
+        // It's a router
+        const router = handler as Router;
+
+        // Adjust the routes
+        router.routes.forEach((route) => {
+          const fullPath = path + (route.path === "/" ? "" : route.path);
+          routes.push({
+            method: route.method,
+            path: fullPath,
+            handler: route.handler,
+          });
+        });
+
+        // Adjust middlewares
+        router.middlewares.forEach((middleware) => {
+          middlewares.push((req, res, next) => {
+            if (req.pathname && req.pathname.startsWith(path)) {
+              middleware(req, res, next);
+            } else {
+              next();
+            }
+          });
+        });
+      } else if (typeof handler === "function") {
+        // It's a middleware
+        middlewares.push((req, res, next) => {
+          if (req.pathname && req.pathname.startsWith(path)) {
+            handler(req, res, next);
+          } else {
+            next();
+          }
+        });
+      } else {
+        throw new Error("Invalid arguments to app.use");
+      }
+    } else if (typeof pathOrMiddleware === "function") {
+      const middleware = pathOrMiddleware;
+      middlewares.push(middleware);
+    } else {
+      throw new Error("Invalid arguments to app.use");
+    }
   };
 
   ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
@@ -129,6 +190,57 @@ function createApp(): App {
 }
 
 /**
+ * Creates a Router instance for modular route handling.
+ * @returns A Router object with methods similar to the main app.
+ */
+function createRouter(): Router {
+  const middlewares: MiddlewareFunction[] = [];
+  const routes: Route[] = [];
+
+  function use(
+    pathOrMiddleware: string | MiddlewareFunction,
+    middleware?: MiddlewareFunction
+  ): void {
+    if (typeof pathOrMiddleware === "function") {
+      middlewares.push(pathOrMiddleware);
+    } else if (typeof pathOrMiddleware === "string" && middleware) {
+      // Path-specific middleware within the router
+      middlewares.push((req, res, next) => {
+        if (req.pathname && req.pathname.startsWith(pathOrMiddleware)) {
+          middleware(req, res, next);
+        } else {
+          next();
+        }
+      });
+    } else {
+      throw new Error("Invalid arguments to router.use");
+    }
+  }
+
+  function addRoute(method: string, path: string, handler: RouteHandler): void {
+    routes.push({ method, path, handler });
+  }
+
+  const router: Router = {
+    use,
+    get: (path: string, handler: RouteHandler) =>
+      addRoute("GET", path, handler),
+    post: (path: string, handler: RouteHandler) =>
+      addRoute("POST", path, handler),
+    put: (path: string, handler: RouteHandler) =>
+      addRoute("PUT", path, handler),
+    delete: (path: string, handler: RouteHandler) =>
+      addRoute("DELETE", path, handler),
+    patch: (path: string, handler: RouteHandler) =>
+      addRoute("PATCH", path, handler),
+    routes,
+    middlewares,
+  };
+
+  return router;
+}
+
+/**
  * Matches the request path to the route path and extracts parameters.
  * @param routePath The route path with optional parameters (e.g., '/users/:id').
  * @param reqPath The actual request path (e.g., '/users/123').
@@ -138,8 +250,14 @@ function matchPath(
   routePath: string,
   reqPath: string
 ): { [key: string]: string } | null {
-  const routeSegments = routePath.split("/").filter(Boolean);
-  const reqSegments = reqPath.split("/").filter(Boolean);
+  // Normalize paths by removing trailing slashes (except for root '/')
+  const normalizePath = (path: string) =>
+    path !== "/" ? path.replace(/\/+$/, "") : path;
+  const normalizedRoutePath = normalizePath(routePath);
+  const normalizedReqPath = normalizePath(reqPath);
+
+  const routeSegments = normalizedRoutePath.split("/").filter(Boolean);
+  const reqSegments = normalizedReqPath.split("/").filter(Boolean);
 
   if (routeSegments.length !== reqSegments.length) {
     return null;
@@ -152,6 +270,9 @@ function matchPath(
     const reqSegment = reqSegments[i];
 
     if (routeSegment.startsWith(":")) {
+      if (!reqSegment) {
+        return null; // Parameter value is missing
+      }
       const paramName = routeSegment.slice(1);
       params[paramName] = reqSegment;
     } else if (routeSegment !== reqSegment) {
@@ -430,4 +551,4 @@ function splitBuffer(
   return [part1, part2];
 }
 
-export default createApp;
+export { createApp, createRouter, type MiddlewareFunction, type Router };
