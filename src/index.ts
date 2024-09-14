@@ -1,10 +1,11 @@
 import * as http from "http";
 import * as url from "url";
+import * as qs from "querystring";
 import * as fs from "fs";
 import * as path from "path";
 
 interface RequestExtensions {
-  query?: { [key: string]: string };
+  query?: { [key: string]: any };
   pathname?: string;
   params?: { [key: string]: string };
   body?: any;
@@ -82,7 +83,7 @@ function createApp(): App {
     const method = req.method || "GET";
 
     const parsedUrl = new url.URL(req.url || "", `http://${req.headers.host}`);
-    reqExt.query = Object.fromEntries(parsedUrl.searchParams.entries());
+    reqExt.query = qs.parse(parsedUrl.searchParams.toString() || "");
     reqExt.pathname = parsedUrl.pathname;
 
     let idx = 0;
