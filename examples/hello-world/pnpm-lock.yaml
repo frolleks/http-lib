@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      pathless:
-        specifier: ^0.0.1
-        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: ^22.5.5
@@ -181,9 +177,6 @@ packages:
   get-tsconfig@4.8.1:
     resolution: {integrity: sha512-k9PN+cFBmaLWtVz29SkUoqU5O0slLuHJXt/2P+tMVFT+phsSGXGkp9t3rQIqdz0e+06EHNGs3oM6ZX1s2zHxRg==}
 
-  pathless@0.0.1:
-    resolution: {integrity: sha512-3z2P7SajYRCPjD1WGQ45m4N5GZBKgW49FBbR3meqhC7Kq4yFT0NQyyyRIeotNLN907Cz5QW2e7dVgNYyx41qhA==}
-
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
@@ -306,8 +299,6 @@ snapshots:
   get-tsconfig@4.8.1:
     dependencies:
       resolve-pkg-maps: 1.0.0
-
-  pathless@0.0.1: {}
 
   resolve-pkg-maps@1.0.0: {}
 
