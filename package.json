@@ -1,5 +1,5 @@
 {
-  "name": "http-lib",
+  "name": "pathless",
   "version": "0.0.1",
   "description": "an http router for Node.js",
   "main": "dist/index.js",
@@ -10,6 +10,12 @@
   },
   "keywords": [
     "http"
+  ],
+  "files": [
+    "dist/",
+    "package.json",
+    "LICENSE",
+    "README.md"
   ],
   "author": "Frolleks",
   "license": "MIT",

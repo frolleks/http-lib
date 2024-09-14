@@ -1,4 +1,4 @@
-import { createRouter } from "http-lib";
+import { createRouter } from "pathless";
 
 const router = createRouter();
 
