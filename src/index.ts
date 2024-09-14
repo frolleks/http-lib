@@ -4,7 +4,7 @@ import * as qs from "querystring";
 import * as fs from "fs";
 import * as path from "path";
 
-interface PathlessRequest extends http.IncomingMessage {
+export interface PathlessRequest extends http.IncomingMessage {
   query?: { [key: string]: any };
   pathname?: string;
   params?: { [key: string]: string };
@@ -18,7 +18,7 @@ interface UploadedFile {
   data: Buffer;
 }
 
-interface PathlessResponse extends http.ServerResponse {
+export interface PathlessResponse extends http.ServerResponse {
   send: (body: any) => void;
   text: (body: string) => void;
   html: (body: string) => void;

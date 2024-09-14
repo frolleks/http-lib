@@ -2,9 +2,20 @@
   "name": "pathless",
   "version": "0.0.3",
   "description": "an http router for Node.js",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "default": "./dist/index.js",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./middleware": {
+      "default": "./dist/middleware/index.js",
+      "require": "./dist/middleware/index.js",
+      "import": "./dist/middleware/index.mjs",
+      "types": "./dist/middleware/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsup"
   },
