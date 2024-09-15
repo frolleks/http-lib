@@ -33,7 +33,10 @@ type MiddlewareFunction = (
   next: (err?: any) => void
 ) => void;
 
-type RouteHandler = (req: PathlessRequest, res: PathlessResponse) => void;
+export type RouteHandler = (
+  req: PathlessRequest,
+  res: PathlessResponse
+) => void;
 
 interface Route {
   method: string;
@@ -66,16 +69,95 @@ interface Router {
 }
 
 /**
+ * Helper function to create the `use` function for both the app and router.
+ * This function registers middleware or a router on a specific path.
+ */
+export function createUseFunction(
+  middlewares: MiddlewareFunction[],
+  routes: any[] // Can be Route[] or Router[]
+) {
+  return function (
+    pathOrMiddleware: string | MiddlewareFunction,
+    routerOrMiddleware?: Router | MiddlewareFunction
+  ): void {
+    if (typeof pathOrMiddleware === "string" && routerOrMiddleware) {
+      const path = pathOrMiddleware;
+      const handler = routerOrMiddleware;
+
+      if ("routes" in handler && "middlewares" in handler) {
+        // It's a router
+        const router = handler as Router;
+
+        // Adjust the routes
+        router.routes.forEach((route) => {
+          const fullPath = path + (route.path === "/" ? "" : route.path);
+          routes.push({
+            method: route.method,
+            path: fullPath,
+            handler: route.handler,
+          });
+        });
+
+        // Adjust middlewares
+        router.middlewares.forEach((middleware) => {
+          middlewares.push((req, res, next) => {
+            if (req.pathname && req.pathname.startsWith(path)) {
+              middleware(req, res, next);
+            } else {
+              next();
+            }
+          });
+        });
+      } else if (typeof handler === "function") {
+        // It's middleware
+        middlewares.push((req, res, next) => {
+          if (req.pathname && req.pathname.startsWith(path)) {
+            handler(req, res, next);
+          } else {
+            next();
+          }
+        });
+      } else {
+        throw new Error("Invalid arguments to use function");
+      }
+    } else if (typeof pathOrMiddleware === "function") {
+      const middleware = pathOrMiddleware;
+      middlewares.push(middleware);
+    } else {
+      throw new Error("Invalid arguments to use function");
+    }
+  };
+}
+
+/**
+ * Generates route methods (get, post, put, delete, patch) for a given object
+ * and attaches them to the provided `routes` array.
+ *
+ * @param obj The object (e.g., app or router) to attach the route methods to.
+ * @param routes The array where the routes will be stored.
+ */
+export function createRouteMethods(obj: any, routes: Route[]) {
+  const methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
+
+  methods.forEach((method) => {
+    obj[method.toLowerCase()] = function (
+      path: string,
+      handler: RouteHandler
+    ): void {
+      routes.push({ method, path, handler });
+    };
+  });
+}
+
+/**
  * Creates an application instance with routing and middleware support.
  * @returns An application function that can handle HTTP requests.
  */
 function createApp(): App {
-  // Include bodyParser middleware by default
   const middlewares: MiddlewareFunction[] = [bodyParser];
   const routes: Route[] = [];
 
   const app = function (req: http.IncomingMessage, res: http.ServerResponse) {
-    // Enhance the req and res objects
     const reqExt = req as PathlessRequest;
     const resExt = res as PathlessResponse;
     enhanceResponse(resExt);
@@ -121,66 +203,8 @@ function createApp(): App {
     next();
   } as App;
 
-  app.use = function (
-    pathOrMiddleware: string | MiddlewareFunction,
-    routerOrMiddleware?: Router | MiddlewareFunction
-  ): void {
-    if (typeof pathOrMiddleware === "string" && routerOrMiddleware) {
-      const path = pathOrMiddleware;
-      const handler = routerOrMiddleware;
-
-      if ("routes" in handler && "middlewares" in handler) {
-        // It's a router
-        const router = handler as Router;
-
-        // Adjust the routes
-        router.routes.forEach((route) => {
-          const fullPath = path + (route.path === "/" ? "" : route.path);
-          routes.push({
-            method: route.method,
-            path: fullPath,
-            handler: route.handler,
-          });
-        });
-
-        // Adjust middlewares
-        router.middlewares.forEach((middleware) => {
-          middlewares.push((req, res, next) => {
-            if (req.pathname && req.pathname.startsWith(path)) {
-              middleware(req, res, next);
-            } else {
-              next();
-            }
-          });
-        });
-      } else if (typeof handler === "function") {
-        // It's a middleware
-        middlewares.push((req, res, next) => {
-          if (req.pathname && req.pathname.startsWith(path)) {
-            handler(req, res, next);
-          } else {
-            next();
-          }
-        });
-      } else {
-        throw new Error("Invalid arguments to app.use");
-      }
-    } else if (typeof pathOrMiddleware === "function") {
-      const middleware = pathOrMiddleware;
-      middlewares.push(middleware);
-    } else {
-      throw new Error("Invalid arguments to app.use");
-    }
-  };
-
-  ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
-    (app as any)[method.toLowerCase()] = function (
-      path: string,
-      handler: RouteHandler
-    ): void {
-      routes.push({ method, path, handler });
-    };
-  });
+  app.use = createUseFunction(middlewares, routes);
+  createRouteMethods(app, routes);
 
   app.listen = function (port: number, callback?: () => void): http.Server {
     const server = http.createServer(app);
@@ -192,53 +216,22 @@ function createApp(): App {
 
 /**
  * Creates a Router instance for modular route handling.
+ * This router supports middleware and RESTful route methods like GET, POST, etc.
  * @returns A Router object with methods similar to the main app.
  */
 function createRouter(): Router {
   const middlewares: MiddlewareFunction[] = [];
   const routes: Route[] = [];
 
-  function use(
-    pathOrMiddleware: string | MiddlewareFunction,
-    middleware?: MiddlewareFunction
-  ): void {
-    if (typeof pathOrMiddleware === "function") {
-      middlewares.push(pathOrMiddleware);
-    } else if (typeof pathOrMiddleware === "string" && middleware) {
-      // Path-specific middleware within the router
-      middlewares.push((req, res, next) => {
-        if (req.pathname && req.pathname.startsWith(pathOrMiddleware)) {
-          middleware(req, res, next);
-        } else {
-          next();
-        }
-      });
-    } else {
-      throw new Error("Invalid arguments to router.use");
-    }
-  }
-
-  function addRoute(method: string, path: string, handler: RouteHandler): void {
-    routes.push({ method, path, handler });
-  }
-
-  const router: Router = {
-    use,
-    get: (path: string, handler: RouteHandler) =>
-      addRoute("GET", path, handler),
-    post: (path: string, handler: RouteHandler) =>
-      addRoute("POST", path, handler),
-    put: (path: string, handler: RouteHandler) =>
-      addRoute("PUT", path, handler),
-    delete: (path: string, handler: RouteHandler) =>
-      addRoute("DELETE", path, handler),
-    patch: (path: string, handler: RouteHandler) =>
-      addRoute("PATCH", path, handler),
+  const router: Partial<Router> = {
     routes,
     middlewares,
   };
 
-  return router;
+  router.use = createUseFunction(middlewares, routes);
+  createRouteMethods(router, routes);
+
+  return router as Router;
 }
 
 /**
