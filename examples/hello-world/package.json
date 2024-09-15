@@ -1,11 +1,14 @@
 {
   "name": "hello-world",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
+    "build": "tsc",
+    "start": "node .",
     "dev": "tsx watch index.ts"
   },
   "devDependencies": {
     "@types/node": "^22.5.5",
-    "tsx": "^4.19.1"
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
   }
 }

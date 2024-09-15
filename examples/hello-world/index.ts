@@ -14,7 +14,7 @@ app.use("/users", userRoutes);
 
 // Route sending plain text
 app.get("/", (req, res) => {
-  res.send("Hello World");
+  res.text("Hello World");
 });
 
 // Route sending JSON response
