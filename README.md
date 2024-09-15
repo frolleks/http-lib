@@ -35,6 +35,10 @@ app.listen(3000, () => {
 
 (from [frolleks/nodejs-http-framework-benchmark](https://github.com/frolleks/nodejs-http-framework-benchmark))
 
+## Documentation
+
+Visit the [repository's Wiki](https://github.com/frolleks/pathless/wiki).
+
 ## License
 
 MIT License
