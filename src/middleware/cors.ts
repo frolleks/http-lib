@@ -45,8 +45,7 @@ function cors(options?: {
 
     // If it's a preflight request (OPTIONS), respond and end the request
     if (req.method === "OPTIONS") {
-      res.statusCode = 204; // No Content
-      res.end();
+      res.status(204).end();
       return;
     }
 
