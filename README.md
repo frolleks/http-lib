@@ -2,6 +2,12 @@
 
 An http router for Node.js. Mostly made by OpenAI's o1. Let's see how good this can be.
 
+## Features
+
+- **Flexible Routing**: Easily define routes for various HTTP methods, including support for dynamic and wildcard routes.
+- **Middleware Support**: Add global or route-specific middleware to handle tasks like authentication, logging, and more.
+- **Modular Routers**: Organize your application into reusable routers for better scalability and maintainability.
+
 ## Quick Start
 
 ```bash
@@ -24,12 +30,6 @@ app.listen(3000, () => {
   console.log("Server is listening on port 3000");
 });
 ```
-
-## Features
-
-- **Flexible Routing**: Easily define routes for various HTTP methods, including support for dynamic and wildcard routes.
-- **Middleware Support**: Add global or route-specific middleware to handle tasks like authentication, logging, and more.
-- **Modular Routers**: Organize your application into reusable routers for better scalability and maintainability.
 
 ## Comparison with other frameworks
 
