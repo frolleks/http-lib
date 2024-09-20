@@ -25,6 +25,12 @@ app.listen(3000, () => {
 });
 ```
 
+## Features
+
+- **Flexible Routing**: Easily define routes for various HTTP methods, including support for dynamic and wildcard routes.
+- **Middleware Support**: Add global or route-specific middleware to handle tasks like authentication, logging, and more.
+- **Modular Routers**: Organize your application into reusable routers for better scalability and maintainability.
+
 ## Comparison with other frameworks
 
 | Stat        | Framework | 1%     | 2.5%   | 50%    | 97.5%  | Avg       | Stdev    | Min    |
