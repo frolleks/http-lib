@@ -34,7 +34,7 @@
   "homepage": "https://github.com/frolleks/pathless",
   "repository": {
     "type": "git",
-    "url": "https://github.com/frolleks/pathless.git"
+    "url": "git+https://github.com/frolleks/pathless.git"
   },
   "author": "Frolleks",
   "license": "MIT",
