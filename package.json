@@ -1,7 +1,7 @@
 {
   "name": "pathless",
   "version": "0.1.0",
-  "description": "an http router for Node.js",
+  "description": "A lightweight, flexible routing library for Node.js",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

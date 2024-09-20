@@ -1,6 +1,6 @@
 # Pathless
 
-An http router for Node.js. Mostly made by OpenAI's o1. Let's see how good this can be.
+A lightweight, flexible routing library for Node.js. Designed for simplicity, Pathless provides an intuitive API for handling HTTP requests and organizing your routes.
 
 ## Features
 
