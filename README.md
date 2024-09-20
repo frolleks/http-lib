@@ -2,6 +2,19 @@
 
 A lightweight, flexible routing library for Node.js. Designed for simplicity, Pathless provides an intuitive API for handling HTTP requests and organizing your routes.
 
+```js
+// CJS
+const { createApp } = require("pathless");
+// ESM
+import { createApp } from "pathless";
+
+const app = createApp();
+
+app.get("/", (req, res) => res.send("Hello world!"));
+
+app.listen(3000, () => console.log("Server is listening on port 3000"));
+```
+
 ## Features
 
 - **Flexible Routing**: Easily define routes for various HTTP methods, including support for dynamic and wildcard routes.
@@ -11,24 +24,9 @@ A lightweight, flexible routing library for Node.js. Designed for simplicity, Pa
 ## Quick Start
 
 ```bash
-$ npm i pathless
-```
-
-```js
-// CJS
-const { createApp } = require("pathless");
-// ESM
-import { createApp } from "pathless";
-
-const app = createApp();
-
-app.get("/", (req, res) => {
-  res.json({ hello: "world" });
-});
-
-app.listen(3000, () => {
-  console.log("Server is listening on port 3000");
-});
+$ npm i pathless@latest
+$ yarn add pathless@latest
+$ pnpm i pathless@latest
 ```
 
 ## Comparison with other frameworks
