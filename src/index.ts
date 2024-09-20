@@ -18,6 +18,7 @@ interface PathlessRequest extends http.IncomingMessage {
 interface PathlessResponse extends http.ServerResponse {
   status: (statusCode: number) => PathlessResponse;
   send: (body: any) => void;
+  sendStatus: (statusCode: number) => void;
   text: (body: string) => void;
   html: (body: string) => void;
   json: (data: any) => void;
@@ -304,36 +305,50 @@ function enhanceResponse(res: PathlessResponse): void {
    * @param body The response body.
    */
   res.send = function (body: any): void {
-    // Check if the Content-Type header is already set
-    if (!res.hasHeader("Content-Type")) {
-      // Set default Content-Type based on the body type
-      if (typeof body === "string" || Buffer.isBuffer(body)) {
-        throw new Error(
-          "Content-Type header is required when sending string or buffer data."
-        );
-      } else if (typeof body === "object") {
-        throw new Error(
-          "Content-Type header is required when sending JSON data."
-        );
-      }
+    // If no body is provided, send an empty response
+    if (body === undefined || body === null) {
+      res.end();
+      return;
     }
 
-    if (typeof body === "string" || Buffer.isBuffer(body)) {
+    if (typeof body === "string") {
+      if (!res.hasHeader("Content-Type")) {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+      }
+      res.setHeader("Content-Length", Buffer.byteLength(body));
+      res.end(body);
+    } else if (Buffer.isBuffer(body)) {
+      if (!res.hasHeader("Content-Type")) {
+        res.setHeader("Content-Type", "application/octet-stream");
+      }
+      res.setHeader("Content-Length", body.length);
       res.end(body);
     } else if (typeof body === "object") {
-      res.json(body);
+      this.json(body);
+    } else if (typeof body === "number") {
+      const numStr = body.toString();
+      if (!res.hasHeader("Content-Type")) {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+      }
+      res.setHeader("Content-Length", Buffer.byteLength(numStr));
+      res.end(numStr);
     } else {
-      res.end();
+      const strBody = String(body);
+      if (!res.hasHeader("Content-Type")) {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+      }
+      res.setHeader("Content-Length", Buffer.byteLength(strBody));
+      res.end(strBody);
     }
   };
 
   /**
-   * Sends an HTML response to the client.
-   * @param body The response body.
+   * Sends a blank response body with an HTTP status code.
+   * @param statusCode The status code.
    */
-  res.html = function (body: string): void {
-    res.setHeader("Content-Type", "text/html");
-    res.end(body);
+  res.sendStatus = function (statusCode: number) {
+    res.statusCode = statusCode;
+    res.end();
   };
 
   /**
