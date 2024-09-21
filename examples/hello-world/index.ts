@@ -1,14 +1,8 @@
 import * as fs from "fs";
-import { createApp } from "pathless";
+import pathless from "pathless";
 import userRoutes from "./userRoutes";
 
-const app = createApp();
-
-// Middleware example
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  next();
-});
+const app = pathless();
 
 app.use("/users", userRoutes);
 

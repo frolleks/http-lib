@@ -4,13 +4,19 @@ import * as qs from "querystring";
 import * as fs from "fs";
 import * as path from "path";
 
-import type { UploadedFile } from "./middleware/bodyParser";
+import findMyWay, {
+  HTTPVersion,
+  HTTPMethod,
+  Instance as FindMyWayInstance,
+} from "find-my-way";
+
 import { bodyParser } from "./middleware";
+import type { UploadedFile } from "./middleware/bodyParser";
 
 interface PathlessRequest extends http.IncomingMessage {
   query?: { [key: string]: any };
   pathname?: string;
-  params?: { [key: string]: string };
+  params?: { [key: string]: string | undefined };
   body?: any;
   files?: { [key: string]: UploadedFile };
 }
@@ -39,7 +45,7 @@ interface Route {
   handler: RouteHandler;
 }
 
-interface App {
+interface PathlessInstance {
   (req: http.IncomingMessage, res: http.ServerResponse): void;
   use(middleware: MiddlewareFunction): void;
   use(path: string, routerOrMiddleware: Router | MiddlewareFunction): void;
@@ -61,107 +67,30 @@ interface Router {
   patch: (path: string, handler: RouteHandler) => void;
   routes: Route[];
   middlewares: MiddlewareFunction[];
+  handle: (req: http.IncomingMessage, res: http.ServerResponse) => void;
 }
 
 /**
- * Helper function to create the `use` function for both the app and router.
- * This function registers middleware or a router on a specific path.
+ * Shared function to create an instance with middlewares and a router.
+ * This function is used by both createApp and createRouter to avoid code duplication.
  */
-function createUseFunction(
-  middlewares: MiddlewareFunction[],
-  routes: any[] // Can be Route[] or Router[]
-) {
-  return function (
-    pathOrMiddleware: string | MiddlewareFunction,
-    routerOrMiddleware?: Router | MiddlewareFunction
-  ): void {
-    if (typeof pathOrMiddleware === "string" && routerOrMiddleware) {
-      const path = pathOrMiddleware;
-      const handler = routerOrMiddleware;
+function createInstance() {
+  const middlewares: MiddlewareFunction[] = [];
+  const routerInstance = findMyWay<HTTPVersion.V1>();
 
-      if ("routes" in handler && "middlewares" in handler) {
-        // It's a router
-        const router = handler as Router;
-
-        // Adjust the routes
-        router.routes.forEach((route) => {
-          const fullPath = path + (route.path === "/" ? "" : route.path);
-          routes.push({
-            method: route.method,
-            path: fullPath,
-            handler: route.handler,
-          });
-        });
-
-        // Adjust middlewares
-        router.middlewares.forEach((middleware) => {
-          middlewares.push((req, res, next) => {
-            if (req.pathname && req.pathname.startsWith(path)) {
-              middleware(req, res, next);
-            } else {
-              next();
-            }
-          });
-        });
-      } else if (typeof handler === "function") {
-        // It's middleware
-        middlewares.push((req, res, next) => {
-          if (req.pathname && req.pathname.startsWith(path)) {
-            handler(req, res, next);
-          } else {
-            next();
-          }
-        });
-      } else {
-        throw new Error("Invalid arguments to use function");
-      }
-    } else if (typeof pathOrMiddleware === "function") {
-      const middleware = pathOrMiddleware;
-      middlewares.push(middleware);
-    } else {
-      throw new Error("Invalid arguments to use function");
-    }
-  };
-}
-
-/**
- * Generates route methods (get, post, put, delete, patch) for a given object
- * and attaches them to the provided `routes` array.
- *
- * @param obj The object (e.g., app or router) to attach the route methods to.
- * @param routes The array where the routes will be stored.
- */
-function createRouteMethods(obj: any, routes: Route[]) {
-  const methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
-
-  methods.forEach((method) => {
-    obj[method.toLowerCase()] = function (
-      path: string,
-      handler: RouteHandler
-    ): void {
-      routes.push({ method, path, handler });
-    };
-  });
-}
-
-/**
- * Creates an application instance with routing and middleware support.
- * @returns An application function that can handle HTTP requests.
- */
-function createApp(): App {
-  const middlewares: MiddlewareFunction[] = [bodyParser];
-  const routes: Route[] = [];
-
-  const app = function (req: http.IncomingMessage, res: http.ServerResponse) {
+  function handler(req: http.IncomingMessage, res: http.ServerResponse): void {
     const reqExt = req as PathlessRequest;
     const resExt = res as PathlessResponse;
     enhanceResponse(resExt);
 
-    const method = req.method || "GET";
-
-    const parsedUrl = new url.URL(req.url || "", `http://${req.headers.host}`);
-    reqExt.query = qs.parse(parsedUrl.searchParams.toString() || "");
-    reqExt.pathname = parsedUrl.pathname;
+    if (!reqExt.pathname) {
+      const parsedUrl = new url.URL(
+        req.url || "",
+        `http://${req.headers.host}`
+      );
+      reqExt.query = qs.parse(parsedUrl.searchParams.toString() || "");
+      reqExt.pathname = parsedUrl.pathname;
+    }
 
     let idx = 0;
 
@@ -176,30 +105,111 @@ function createApp(): App {
         const middleware = middlewares[idx++];
         middleware(reqExt, resExt, next);
       } else {
-        const route = routes.find((r) => {
-          if (r.method !== method) return false;
-          const params = matchPath(r.path, reqExt.pathname || "");
-          if (params) {
-            reqExt.params = params;
-            return true;
-          }
-          return false;
-        });
-
-        if (route) {
-          route.handler(reqExt, resExt);
-        } else {
-          res.statusCode = 404;
-          res.end("Not Found");
-        }
+        routerInstance.lookup(reqExt, resExt);
       }
     }
 
     next();
-  } as App;
+  }
 
-  app.use = createUseFunction(middlewares, routes);
-  createRouteMethods(app, routes);
+  return { middlewares, routerInstance, handler };
+}
+
+/**
+ * Helper function to create the `use` function for both the app and router.
+ * This function registers middleware or a router on a specific path using find-my-way.
+ */
+function createUseFunction(
+  middlewares: MiddlewareFunction[],
+  router: FindMyWayInstance<HTTPVersion.V1>
+) {
+  return function (
+    pathOrMiddleware: string | MiddlewareFunction,
+    routerOrMiddleware?: Router | MiddlewareFunction
+  ): void {
+    if (typeof pathOrMiddleware === "string" && routerOrMiddleware) {
+      const path = pathOrMiddleware;
+      const handler = routerOrMiddleware;
+
+      if ("handle" in handler && typeof handler.handle === "function") {
+        // It's a Router instance
+        // Mount the router on the specified path
+        router.all(`${path}/*`, (req, res, params) => {
+          const reqExt = req as PathlessRequest;
+          const resExt = res as PathlessResponse;
+
+          const originalUrl = reqExt.url || "";
+          reqExt.url = originalUrl.substring(path.length) || "/";
+          reqExt.pathname = reqExt.url;
+          reqExt.params = { ...reqExt.params, ...params };
+          handler.handle(reqExt, resExt);
+        });
+      } else if (typeof handler === "function") {
+        // It's middleware
+        middlewares.push((req, res, next) => {
+          if (req.pathname && req.pathname.startsWith(path)) {
+            handler(req, res, next);
+          } else {
+            next();
+          }
+        });
+      } else {
+        throw new Error("Invalid arguments to use function");
+      }
+    } else if (typeof pathOrMiddleware === "function") {
+      // Global middleware
+      const middleware = pathOrMiddleware;
+      middlewares.push(middleware);
+    } else {
+      throw new Error("Invalid arguments to use function");
+    }
+  };
+}
+
+/**
+ * Generates route methods (get, post, put, delete, patch) for a given object
+ * and attaches them to the provided router instance.
+ *
+ * @param obj The object (e.g., app or router) to attach the route methods to.
+ * @param router The find-my-way router instance.
+ */
+function createRouteMethods(
+  obj: any,
+  router: FindMyWayInstance<HTTPVersion.V1>
+) {
+  const methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
+
+  methods.forEach((method) => {
+    obj[method.toLowerCase()] = function (
+      path: string,
+      handler: RouteHandler
+    ): void {
+      router.on(method as HTTPMethod, path, (req, res, params) => {
+        const reqExt = req as PathlessRequest;
+        const resExt = res as PathlessResponse;
+        reqExt.params = params;
+        handler(reqExt, resExt);
+      });
+    };
+  });
+}
+
+/**
+ * Creates an application instance with routing and middleware support.
+ * @returns An application function that can handle HTTP requests.
+ */
+function createApp(): PathlessInstance {
+  const { middlewares, routerInstance, handler } = createInstance();
+
+  // Add default middleware
+  middlewares.push(bodyParser);
+
+  const app = function (req: http.IncomingMessage, res: http.ServerResponse) {
+    handler(req, res);
+  } as PathlessInstance;
+
+  app.use = createUseFunction(middlewares, routerInstance);
+  createRouteMethods(app, routerInstance);
 
   app.listen = function (port: number, callback?: () => void): http.Server {
     const server = http.createServer(app);
@@ -215,75 +225,20 @@ function createApp(): App {
  * @returns A Router object with methods similar to the main app.
  */
 function createRouter(): Router {
-  const middlewares: MiddlewareFunction[] = [];
+  const { middlewares, routerInstance, handler } = createInstance();
+
   const routes: Route[] = [];
 
   const router: Partial<Router> = {
     routes,
     middlewares,
+    handle: handler,
   };
 
-  router.use = createUseFunction(middlewares, routes);
-  createRouteMethods(router, routes);
+  router.use = createUseFunction(middlewares, routerInstance);
+  createRouteMethods(router, routerInstance);
 
   return router as Router;
-}
-
-/**
- * Matches the request path to the route path and extracts parameters.
- * @param routePath The route path with optional parameters (e.g., '/users/:id').
- * @param reqPath The actual request path (e.g., '/users/123').
- * @returns An object containing route parameters if matched, otherwise null.
- */
-function matchPath(
-  routePath: string,
-  reqPath: string
-): { [key: string]: string } | null {
-  const params: { [key: string]: string } = {};
-
-  let routeIndex = 0;
-  let reqIndex = 0;
-
-  while (routeIndex < routePath.length && reqIndex < reqPath.length) {
-    // Skip over any leading '/' characters
-    while (routePath[routeIndex] === "/") routeIndex++;
-    while (reqPath[reqIndex] === "/") reqIndex++;
-
-    // If we have reached the end of either path, break
-    if (routeIndex >= routePath.length || reqIndex >= reqPath.length) break;
-
-    // Find the next '/' in both paths
-    const nextRouteSlash = routePath.indexOf("/", routeIndex);
-    const nextReqSlash = reqPath.indexOf("/", reqIndex);
-
-    const routeSegment = routePath.slice(
-      routeIndex,
-      nextRouteSlash === -1 ? undefined : nextRouteSlash
-    );
-    const reqSegment = reqPath.slice(
-      reqIndex,
-      nextReqSlash === -1 ? undefined : nextReqSlash
-    );
-
-    // If the segment starts with ':', it's a parameter
-    if (routeSegment[0] === ":") {
-      const paramName = routeSegment.slice(1); // Remove the leading ':'
-      params[paramName] = reqSegment; // Assign the corresponding request segment to the parameter name
-    } else if (routeSegment !== reqSegment) {
-      return null; // If a non-parameter segment doesn't match, paths don't match
-    }
-
-    // Move to the next segment
-    routeIndex = nextRouteSlash === -1 ? routePath.length : nextRouteSlash;
-    reqIndex = nextReqSlash === -1 ? reqPath.length : nextReqSlash;
-  }
-
-  // Handle case where one path is longer than the other
-  if (routeIndex < routePath.length || reqIndex < reqPath.length) {
-    return null;
-  }
-
-  return params;
 }
 
 /**
@@ -414,13 +369,15 @@ function getMimeType(ext: string): string {
   return mimeTypes[ext] || "application/octet-stream";
 }
 
-export {
-  createApp,
-  createRouter,
-  type MiddlewareFunction,
-  type Router,
-  type Route,
-  type PathlessRequest,
-  type PathlessResponse,
-  type RouteHandler,
+export default createApp;
+
+export { createRouter };
+export type {
+  MiddlewareFunction,
+  Router,
+  Route,
+  PathlessRequest,
+  PathlessResponse,
+  RouteHandler,
+  PathlessInstance,
 };

@@ -4,11 +4,11 @@ A lightweight, flexible routing library for Node.js. Designed for simplicity, Pa
 
 ```js
 // CJS
-const { createApp } = require("pathless");
+const pathless = require("pathless");
 // ESM
-import { createApp } from "pathless";
+import pathless from "pathless";
 
-const app = createApp();
+const app = pathless();
 
 app.get("/", (req, res) => res.send("Hello world!"));
 
