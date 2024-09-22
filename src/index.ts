@@ -301,8 +301,7 @@ function enhanceResponse(res: PathlessResponse): void {
    * @param statusCode The status code.
    */
   res.sendStatus = function (statusCode: number) {
-    res.statusCode = statusCode;
-    res.end();
+    res.status(statusCode).end();
   };
 
   /**
