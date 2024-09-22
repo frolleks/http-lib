@@ -21,6 +21,8 @@ interface PathlessRequest extends http.IncomingMessage {
 }
 
 interface PathlessResponse extends http.ServerResponse {
+  location: (url: string) => void;
+  redirect: (statusCodeOrUrl: number | string, url?: string) => void;
   status: (statusCode: number) => PathlessResponse;
   send: (body: any) => void;
   sendStatus: (statusCode: number) => void;
@@ -343,6 +345,35 @@ function enhanceResponse(res: PathlessResponse): void {
       res.setHeader("Content-Type", mimeType);
       readStream.pipe(res);
     });
+  };
+
+  /**
+   * Sets the Location header to a specified URL.
+   * @param url The URL to set the Location header to.
+   */
+  res.location = function (url: string): void {
+    res.setHeader("Location", url);
+  };
+
+  /**
+   * Redirects the client to a specified URL.
+   * @param statusCodeOrUrl The HTTP status code or URL to redirect to.
+   * @param url The URL to redirect to (if status code is provided first).
+   */
+  res.redirect = function (
+    statusCodeOrUrl: number | string,
+    url?: string
+  ): void {
+    if (typeof statusCodeOrUrl === "number" && typeof url === "string") {
+      res.status(statusCodeOrUrl);
+      res.location(url);
+    } else if (typeof statusCodeOrUrl === "string") {
+      res.status(302);
+      res.location(statusCodeOrUrl);
+    } else {
+      throw new Error("Invalid arguments to res.redirect");
+    }
+    res.end();
   };
 }
 
