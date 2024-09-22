@@ -1,2 +1,2 @@
-export { cors } from "./cors";
-export { bodyParser } from "./bodyParser";
+export { cors } from "./cors.js";
+export { bodyParser } from "./bodyParser.js";

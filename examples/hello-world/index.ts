@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import pathless from "pathless";
-import userRoutes from "./userRoutes";
+import userRoutes from "./userRoutes.js";
 
 const app = pathless();
 

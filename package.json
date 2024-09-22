@@ -2,18 +2,19 @@
   "name": "pathless",
   "version": "0.2.0",
   "description": "A lightweight, flexible routing library for Node.js",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./middleware": {
-      "require": "./dist/middleware/index.js",
-      "import": "./dist/middleware/index.mjs",
+      "require": "./dist/middleware/index.cjs",
+      "import": "./dist/middleware/index.js",
       "types": "./dist/middleware/index.d.ts"
     }
   },

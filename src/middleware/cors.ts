@@ -1,4 +1,8 @@
-import { MiddlewareFunction, PathlessRequest, PathlessResponse } from "..";
+import {
+  MiddlewareFunction,
+  PathlessRequest,
+  PathlessResponse,
+} from "../index.js";
 
 /**
  * CORS Middleware to handle Cross-Origin Resource Sharing.

@@ -10,8 +10,7 @@ import findMyWay, {
   Instance as FindMyWayInstance,
 } from "find-my-way";
 
-import { bodyParser } from "./middleware";
-import type { UploadedFile } from "./middleware/bodyParser";
+import { bodyParser, type UploadedFile } from "./middleware/bodyParser.js";
 
 interface PathlessRequest extends http.IncomingMessage {
   query?: { [key: string]: any };

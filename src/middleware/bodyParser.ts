@@ -1,6 +1,6 @@
 import * as http from "http";
 
-import type { PathlessRequest } from "..";
+import type { PathlessRequest } from "../index.js";
 
 export interface UploadedFile {
   filename: string;

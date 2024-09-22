@@ -1,5 +1,6 @@
 {
   "name": "hello-world",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
