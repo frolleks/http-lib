@@ -3,6 +3,7 @@ import * as url from "url";
 import * as qs from "querystring";
 import * as fs from "fs";
 import * as path from "path";
+import { Buffer } from "buffer";
 
 import findMyWay, {
   HTTPVersion,
