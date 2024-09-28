@@ -11,6 +11,10 @@ jobs:
   check_release_commit:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,3 +44,7 @@ jobs:
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # Use the NPM token from repository secrets
+
+      - name: Publish to jsr
+        if: startsWith(github.event.head_commit.message, 'release:')
+        run: pnpm dlx jsr publish
