@@ -1,0 +1,14 @@
+{
+  "name": "@pathless/test-do-not-use",
+  "version": "0.1.0",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "deno.ns"]
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./middleware": "./src/middleware/index.ts"
+  },
+  "publish": {
+    "include": ["jsr.json", "LICENSE", "README.md", "src/**/*.ts"]
+  }
+}
