@@ -11,6 +11,7 @@ import findMyWay, {
 } from "find-my-way";
 
 import { bodyParser, type UploadedFile } from "./middleware/bodyParser.js";
+import { cookieParser } from "./middleware/cookieParser.js";
 
 interface PathlessRequest extends http.IncomingMessage {
   query?: { [key: string]: any };
@@ -18,9 +19,11 @@ interface PathlessRequest extends http.IncomingMessage {
   params?: { [key: string]: string | undefined };
   body?: any;
   files?: { [key: string]: UploadedFile };
+  cookies?: { [key: string]: string };
 }
 
 interface PathlessResponse extends http.ServerResponse {
+  cookie: (name: string, value: string, options?: any) => void;
   location: (url: string) => void;
   redirect: (statusCodeOrUrl: number | string, url?: string) => void;
   status: (statusCode: number) => PathlessResponse;
@@ -69,6 +72,16 @@ interface Router {
   routes: Route[];
   middlewares: MiddlewareFunction[];
   handle: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+}
+
+interface CookieOptions {
+  maxAge?: number;
+  expires?: Date;
+  path?: string;
+  domain?: string;
+  secure?: boolean;
+  httpOnly?: boolean;
+  sameSite?: "strict" | "lax" | "none";
 }
 
 /**
@@ -203,6 +216,7 @@ function createApp(): PathlessInstance {
   const { middlewares, routerInstance, handler } = createInstance();
 
   // Add default middleware
+  middlewares.push(cookieParser);
   middlewares.push(bodyParser);
 
   const app = function (req: http.IncomingMessage, res: http.ServerResponse) {
@@ -374,6 +388,64 @@ function enhanceResponse(res: PathlessResponse): void {
       throw new Error("Invalid arguments to res.redirect");
     }
     res.end();
+  };
+
+  /**
+   * Sets cookies on response.
+   * @param name The name of the cookie.
+   * @param value The value of the cookie.
+   * @param options The options for the cookie.
+   */
+  res.cookie = function (
+    name: string,
+    value: string,
+    options: CookieOptions = {}
+  ): void {
+    let cookieStr = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+
+    // Append cookie options if provided
+    if (options.maxAge) {
+      cookieStr += `; Max-Age=${options.maxAge}`;
+    }
+
+    if (options.expires) {
+      cookieStr += `; Expires=${options.expires.toUTCString()}`;
+    }
+
+    if (options.path) {
+      cookieStr += `; Path=${options.path}`;
+    } else {
+      // Set default path to '/'
+      cookieStr += `; Path=/`;
+    }
+
+    if (options.domain) {
+      cookieStr += `; Domain=${options.domain}`;
+    }
+
+    if (options.secure) {
+      cookieStr += `; Secure`;
+    }
+
+    if (options.httpOnly) {
+      cookieStr += `; HttpOnly`;
+    }
+
+    if (options.sameSite) {
+      cookieStr += `; SameSite=${options.sameSite}`;
+    }
+
+    // Set the Set-Cookie header, handle multiple cookies if needed
+    const existingCookies = res.getHeader("Set-Cookie");
+    if (existingCookies) {
+      if (Array.isArray(existingCookies)) {
+        res.setHeader("Set-Cookie", [...existingCookies, cookieStr]);
+      } else {
+        res.setHeader("Set-Cookie", [existingCookies as string, cookieStr]);
+      }
+    } else {
+      res.setHeader("Set-Cookie", cookieStr);
+    }
   };
 }
 
