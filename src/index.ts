@@ -1,3 +1,20 @@
+/**
+ * @module
+ *
+ * Pathless - A lightweight, flexible routing library for JavaScript.
+ *
+ * @example
+ * ```ts
+ * import pathless from "pathless";
+ *
+ * const app = pathless();
+ *
+ * app.get("/", (req, res) => res.send("Hello world!"));
+ *
+ * app.listen(3000, () => console.log("Server is listening on port 3000"));
+ * ```
+ */
+
 import * as http from "http";
 import * as url from "url";
 import * as qs from "querystring";
@@ -31,7 +48,6 @@ interface PathlessResponse extends http.ServerResponse {
   send: (body: any) => void;
   sendStatus: (statusCode: number) => void;
   text: (body: string) => void;
-  html: (body: string) => void;
   json: (data: any) => void;
   sendFile: (filePath: string) => void;
 }
